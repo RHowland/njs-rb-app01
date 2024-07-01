@@ -1,7 +1,9 @@
+"use client";
+
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col items-center  p-24">
-      <h1>njs-lucia-app01</h1>
+      <h1>njs-lucia-app02</h1>
       <div>
         <h2>Home Page</h2>
       </div>

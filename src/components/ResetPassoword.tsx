@@ -15,39 +15,37 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { SignInSchema } from "../zodSchemaTypes"
+import { RestPasswordSchema } from "../zodSchemaTypes"
 import { toast } from "@/components/ui/use-toast"
-import { signIn } from "@/lib/actions/auth.actions"
+import { resetPassword } from "@/lib/actions/auth.actions"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { MailType } from "../types"
 
-export function SignInForm() {
-  const form = useForm<z.infer<typeof SignInSchema>>({
-    resolver: zodResolver(SignInSchema),
+export function ResetPasswordForm() {
+const router = useRouter()
+  const form = useForm<z.infer<typeof RestPasswordSchema>>({
+    resolver: zodResolver(RestPasswordSchema),
     defaultValues: {
       email: "",
-      password: "",
     },
   })
 
   // Section 1 
-  async function onSubmit(values: z.infer<typeof SignInSchema>) {
-    const res = await signIn(values)
+  async function onSubmit(values: z.infer<typeof RestPasswordSchema>) {
+    const res = await resetPassword(values)
     if (res.success) {
-      toast({
-        variant: "default",
-        description: "Signed in successfully",
-      });
-      if(typeof window){
-        setTimeout(() => {
-          window.location.reload()
-        },1000);
+        toast({
+          variant: "default",
+          description: res.message,
+        })
+        router.push(`/verify-token?type=${MailType["resetPass"]}`);
+        return;
       }
-      return;
-    }
-    toast({
-      variant: "destructive",
-      description: res.error,
-    })
+      toast({
+        variant: "destructive",
+        description: res.error,
+      })
   }
   return (
     // Section 2 
@@ -66,29 +64,12 @@ export function SignInForm() {
             </FormItem>
           )}
         />{" "}
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
-              <FormControl>
-                <Input placeholder="****" type="password" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
         <Button type="submit">Submit</Button>
       </form>
       {/* Section 3 */}
       <div className="flex gap-2">
         <p> Don't have account?</p>
         <Link className="text-blue-700  hover:bg-slate-200 rounded-md" href="/sign-up">Sign-Up Now</Link>
-      </div>
-      <div className="flex gap-2">
-        <p>Forgot Password?</p>
-        <Link className="text-blue-700  hover:bg-slate-200 rounded-md" href="/reset-password">Reset Password</Link>
       </div>
     </Form>
   )

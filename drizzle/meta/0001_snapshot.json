@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "sqlite",
-  "id": "951a94d5-315b-4a0b-9960-da36808f93a0",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "03165800-e64a-421a-bba5-56fda671f068",
+  "prevId": "951a94d5-315b-4a0b-9960-da36808f93a0",
   "tables": {
     "session": {
       "name": "session",
@@ -108,6 +108,13 @@
           "notNull": true,
           "autoincrement": false,
           "default": "CURRENT_TIMESTAMP"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         }
       },
       "indexes": {

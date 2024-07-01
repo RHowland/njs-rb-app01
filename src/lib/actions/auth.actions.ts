@@ -1,7 +1,7 @@
 // lib/auth.actions.ts
 "use server"
 import { z } from "zod"
-import { SignInSchema, SignUpSchema } from "@/types"
+import { SignInSchema, SignUpSchema ,RestPasswordSchema, NewPassworSchema } from "@root/src/zodSchemaTypes"
 import { lucia, validateRequest } from "@/lib/lucia"
 import { cookies } from "next/headers"
 import * as argon2 from "argon2"
@@ -10,6 +10,10 @@ import {  user as userSchema } from "@/lib/database/schema"
 import { v4 as uuidv4 } from 'uuid';
 import { db } from "@root/dbConnect"
 import { eq } from "drizzle-orm"
+import { MailType } from "@root/src/types"
+import { storeToken } from "./storeToken"
+import { generateMailReact, sendMailTask } from "../mail-service"
+import { verifyToken } from "./verifyToken"
 
 
 
@@ -24,6 +28,8 @@ Steps:
   6.Sets the session cookie in the browser.
   7.Returns success message and user ID upon successful registration, or error message on failure.
 */ 
+
+
 
 export const signUp = async (values: z.infer<typeof SignUpSchema>) => {
   const hashedPassword = await argon2.hash(values.password)
@@ -42,27 +48,147 @@ export const signUp = async (values: z.infer<typeof SignUpSchema>) => {
       name: values.name,
       email: values.email,
       hashedPassword,
+      updatedAt: Date.now()
     }
+  
+    const storedUser : any =  await db.insert(userSchema).values(user).returning();
     
-    const result : any =  await db.insert(userSchema).values(user).returning();
+    const { token , expiresHours  } = await storeToken({type : MailType["signUpVerify"] , userId});
 
+    const verificationLink = `${process.env.NEXT_PUBLIC_BASE_URL}/verify-token?token=${token}&type=${MailType["signUpVerify"]}`;
+    
+    const mailReact = generateMailReact({ userName: user.name , tokenUrl : verificationLink , token , type : MailType["signUpVerify"] , expiresTime : `${expiresHours} Hours` });
 
-    const session = await lucia.createSession(userId, {
-      email: result.email,
-      name: result.name
-    });
-    const sessionCookie = await lucia.createSessionCookie(session.id);
-    cookies().set(
-      sessionCookie.name,
-      sessionCookie.value,
-      sessionCookie.attributes
-    );
+    const { id : messageId } = await sendMailTask({type: MailType["signUpVerify"] , react : mailReact ,targetMail : user.email  , subject : "Verify Your Email Address" });
 
     return {
       success: true,
-      message: "SignUp Successful!",
+      message: "SignUp Successful! Please Verify Your Email.",
       data: {
-        userId : result.id 
+        userId : storedUser.id,
+        messageId
+      },
+    }
+  } catch (error: any) {
+    return {
+      error: error?.message,
+    }
+  }
+}
+
+export const newPassword = async (values: z.infer<typeof NewPassworSchema> , token : string) => {
+  const tokenResult = await  verifyToken(token , "newPassword")
+  if(!tokenResult.success){
+    return {
+      error: "Reset Password Token isn't valid",
+    } 
+  }
+  
+  
+  
+  try {
+    const existingUsers : any = await db.select().from(userSchema).where(eq(userSchema.id , tokenResult.data.userId ));
+    if(!existingUsers[0] || existingUsers.lenght === 0){
+      return {
+        error: "User isn't registered yet. Please SignUp",
+      }
+    }
+    const hashedPassword = await argon2.hash(values.password)
+    await db.update(userSchema).set({hashedPassword, updatedAt : Date.now()}).where(eq(userSchema.id , existingUsers[0].id )).returning();
+
+  
+
+    return {
+      success: true,
+      message: "Password Reset successful. Please Sign-in",
+      data: {
+        userId : existingUsers[0].id,
+      },
+    }
+  } catch (error: any) {
+    return {
+      error: error?.message,
+    }
+  }
+}
+
+export const resendEmailVerification = async (values: z.infer<typeof RestPasswordSchema>) => {
+  
+  try {
+    const existingUsers : any = await db.select().from(userSchema).where(eq(userSchema.email ,values.email ));
+    if(!existingUsers[0] || existingUsers.lenght === 0){
+      return {
+        error: "Email isn't Not Registered , Please signUp",
+      }
+    }
+    if(existingUsers[0].isVerified){
+      return {
+        error: "Email Already verified. Please Sign-in",
+      }
+    }
+    const userId = existingUsers[0].id
+    const userName = existingUsers[0].name
+    const userEmail = existingUsers[0].email
+
+    
+    const { token , expiresHours  } = await storeToken({type : MailType["resetPass"] , userId});
+
+    const verificationLink = `${process.env.NEXT_PUBLIC_BASE_URL}/verify-token?token=${token}&type=${MailType["resetPass"]}`;
+    
+    const mailReact = generateMailReact({ userName, tokenUrl : verificationLink , token , type : MailType["resetPass"] , expiresTime : `${expiresHours} Hours` });
+
+    const { id : messageId } = await sendMailTask({type: MailType["resetPass"] , react : mailReact ,targetMail : userEmail  , subject : "Password Reset" });
+
+    return {
+      success: true,
+      message: "We have sent a email verification link to your email.",
+      data: {
+        userId,
+        messageId
+      },
+    }
+  } catch (error: any) {
+    return {
+      error: error?.message,
+    }
+  }
+}
+
+
+
+export const resetPassword = async (values: z.infer<typeof RestPasswordSchema>) => {
+  
+  try {
+    const existingUsers : any = await db.select().from(userSchema).where(eq(userSchema.email ,values.email ));
+    if(!existingUsers[0] || existingUsers.lenght === 0){
+      return {
+        error: "Email isn't Not Registered , Please signUp",
+      }
+    }
+    if(!existingUsers[0].isVerified){
+      return {
+        error: "Email isn't verified. Please verify your Email address.",
+      }
+    }
+    const userId = existingUsers[0].id
+    const userName = existingUsers[0].name
+    const userEmail = existingUsers[0].email
+
+    
+    const { token , expiresHours  } = await storeToken({type : MailType["resetPass"] , userId});
+
+    const verificationLink = `${process.env.NEXT_PUBLIC_BASE_URL}/verify-token?token=${token}&type=${MailType["resetPass"]}`;
+    
+    const mailReact = generateMailReact({ userName, tokenUrl : verificationLink , token , type : MailType["resetPass"] , expiresTime : `${expiresHours} Hours` });
+
+    const { id : messageId } = await sendMailTask({type: MailType["resetPass"] , react : mailReact ,targetMail : userEmail  , subject : "Password Reset" });
+
+    return {
+      success: true,
+      message: "Reset Password link is sent to your email.",
+      data: {
+        userId,
+        messageId
       },
     }
   } catch (error: any) {
@@ -99,13 +225,22 @@ export const signIn = async (values: z.infer<typeof SignInSchema>) => {
 
   if (!existingUser) {
     return {
+      isEmailVerified: true,
       error: "User not found",
+    }
+  }
+
+  if(!existingUser.isVerified){
+    return {
+      isEmailVerified: false,
+      error: "User's email isn't verified.Please verify your email",
     }
   }
 
   if (!existingUser.hashedPassword) {
     
     return {
+      isEmailVerified: true,
       error: "User email or password doesn't match",
     }
   }
