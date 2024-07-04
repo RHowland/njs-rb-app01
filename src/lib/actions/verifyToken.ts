@@ -1,3 +1,44 @@
+/**
+ * ---------------------------------------------------------------------
+ * File Name      : verifyToken.ts
+ * Module Name    : Token Verification
+ * Module Type    : Server Module
+ * Date Created   : 2024-07-01
+ * Dev Initials   : Elias Emon
+ * ------------------------------
+ * Module Purpose:
+ * This module handles the verification of tokens for actions such as email verification, password reset, and new password setup. It interacts with the database to validate tokens and update user statuses accordingly.
+ * ------------------------------
+ * Functions:
+ * - deleteToken: Deletes a verification token from the database.
+ * - verifyToken: Verifies a token and performs the corresponding action (e.g., email verification, password reset).
+ * ------------------------------
+ * Input Comments:     (Enter "none" if you have no comments)
+ * - The functions accept strings representing tokens and types.
+ * ------------------------------
+ * Output Comments:    (Enter "none" if you have no comments)
+ * - All functions return success or error messages along with relevant data.
+ * ------------------------------
+ * Additional Comments:
+ * - The module uses the Drizzle ORM for database interactions.
+ * - The module handles different types of tokens using the MailType enum.
+ * Question: Did you have to write any unusual code?
+ * Answer  : NO.
+ * ------------------------------
+ * Section Comments:   (Enter "none" if you have no comments)
+ * Function: deleteToken
+ * Description: Deletes a verification token from the database.
+ * Input: Token string
+ * Output: None
+ * 
+ * Function: verifyToken
+ * Description: Verifies a token and performs the corresponding action (e.g., email verification, password reset).
+ * Input: Token string, type string
+ * Output: Success or error message with relevant data
+ * ------------------------------
+ */
+
+
 "use server";
 
 import { db } from "@root/dbConnect"

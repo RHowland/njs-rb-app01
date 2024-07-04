@@ -1,4 +1,72 @@
 // lib/auth.actions.ts
+/**
+ * ---------------------------------------------------------------------
+ * File Name      : auth.actions.ts
+ * Module Name    : Authentication Actions
+ * Module Type    : Server Module
+ * Date Created   : 2024-07-01
+ * Dev Initials   : Elias Emon
+ * ------------------------------
+ * Module Purpose:
+ * This module handles the authentication actions such as user sign-up, sign-in, sign-out, password reset, and email verification. It interacts with the database, manages user sessions, and sends verification emails.
+ * ------------------------------
+ * Functions:
+ * - signUp: Registers a new user, stores their details in the database, and sends a verification email.
+ * - newPassword: Resets the user's password if the provided token is valid.
+ * - resendEmailVerification: Resends the email verification link to the user's email.
+ * - resetPassword: Sends a password reset link to the user's email if the email is registered and verified.
+ * - signIn: Authenticates the user, creates a session, and sets a session cookie.
+ * - signOut: Invalidates the user's session and clears the session cookie.
+ * ------------------------------
+ * Input Comments:     (Enter "none" if you have no comments)
+ * - All input validation is handled by Zod schemas.
+ * ------------------------------
+ * Output Comments:    (Enter "none" if you have no comments)
+ * - All functions return a success message or an error message.
+ * ------------------------------
+ * Additional Comments:
+ * - The module uses Argon2 for password hashing and verification.
+ * - The module uses UUID for generating unique user IDs.
+ * - The module interacts with a database using the Drizzle ORM.
+ * - The module sends emails using a mail service.
+ * Question: Did you have to write any unusual code?
+ * Answer  : NO.
+ * ------------------------------
+ * Section Comments:   (Enter "none" if you have no comments)
+ * Function: signUp
+ * Description: Registers a new user and sends a verification email.
+ * Input: User details (name, email, password)
+ * Output: Success or error message
+ * 
+ * Function: newPassword
+ * Description: Resets the user's password if the provided token is valid.
+ * Input: New password, token
+ * Output: Success or error message
+ * 
+ * Function: resendEmailVerification
+ * Description: Resends the email verification link to the user's email.
+ * Input: User email
+ * Output: Success or error message
+ * 
+ * Function: resetPassword
+ * Description: Sends a password reset link to the user's email if the email is registered and verified.
+ * Input: User email
+ * Output: Success or error message
+ * 
+ * Function: signIn
+ * Description: Authenticates the user, creates a session, and sets a session cookie.
+ * Input: User email, password
+ * Output: Success or error message
+ * 
+ * Function: signOut
+ * Description: Invalidates the user's session and clears the session cookie.
+ * Input: None
+ * Output: Success or error message
+ * ------------------------------
+ */
+
+
+
 "use server"
 import { z } from "zod"
 import { SignInSchema, SignUpSchema ,RestPasswordSchema, NewPassworSchema } from "@root/src/zodSchemaTypes"
@@ -14,21 +82,6 @@ import { MailType } from "@root/src/types"
 import { storeToken } from "./storeToken"
 import { generateMailReact, sendMailTask } from "../mail-service"
 import { verifyToken } from "./verifyToken"
-
-
-
-
-/** Purpose: Registers a new user.
-Steps:
-  1.Hashes the user's password using Argon2.
-  2.Generates a unique user ID.
-  3.Constructs the user object with hashed password.
-  4.Inserts the user into the database.
-  5.Creates a session for the new user.
-  6.Sets the session cookie in the browser.
-  7.Returns success message and user ID upon successful registration, or error message on failure.
-*/ 
-
 
 
 export const signUp = async (values: z.infer<typeof SignUpSchema>) => {
@@ -66,7 +119,6 @@ export const signUp = async (values: z.infer<typeof SignUpSchema>) => {
       message: "SignUp Successful! Please Verify Your Email.",
       data: {
         userId : storedUser.id,
-        messageId
       },
     }
   } catch (error: any) {
@@ -131,13 +183,13 @@ export const resendEmailVerification = async (values: z.infer<typeof RestPasswor
     const userEmail = existingUsers[0].email
 
     
-    const { token , expiresHours  } = await storeToken({type : MailType["resetPass"] , userId});
+    const { token , expiresHours  } = await storeToken({type : MailType["signUpVerify"] , userId});
 
-    const verificationLink = `${process.env.NEXT_PUBLIC_BASE_URL}/verify-token?token=${token}&type=${MailType["resetPass"]}`;
+    const verificationLink = `${process.env.NEXT_PUBLIC_BASE_URL}/verify-token?token=${token}&type=${MailType["signUpVerify"]}`;
     
-    const mailReact = generateMailReact({ userName, tokenUrl : verificationLink , token , type : MailType["resetPass"] , expiresTime : `${expiresHours} Hours` });
+    const mailReact = generateMailReact({ userName, tokenUrl : verificationLink , token , type : MailType["signUpVerify"] , expiresTime : `${expiresHours} Hours` });
 
-    const { id : messageId } = await sendMailTask({type: MailType["resetPass"] , react : mailReact ,targetMail : userEmail  , subject : "Password Reset" });
+    const { id : messageId } = await sendMailTask({type: MailType["signUpVerify"] , react : mailReact ,targetMail : userEmail  , subject : "Email Verifications" });
 
     return {
       success: true,
@@ -199,15 +251,6 @@ export const resetPassword = async (values: z.infer<typeof RestPasswordSchema>) 
 }
 
 
-/** Purpose: Authenticates a user.
-Steps:
-  1.Validates the sign-in credentials against the schema.
-  2.Retrieves the user from the database based on the provided email.
-  3.Verifies the hashed password against the stored hashed password.
-  4.Creates a session for the authenticated user.
-  5.Sets the session cookie in the browser.
-  6.Returns success message and user ID upon successful authentication, or error message on failure.
-*/
 
 export const signIn = async (values: z.infer<typeof SignInSchema>) => {
   try {
@@ -278,13 +321,7 @@ export const signIn = async (values: z.infer<typeof SignInSchema>) => {
 }
 
 
-/**  Purpose: Terminates an active session.
-Steps:
-  1.Validates the current session and retrieves session information.
-  2.Invalidates the session using Lucia.
-  3.Removes the session cookie from the browser.
-  4.Returns success message or error message on failure.
- */
+
 
 export const signOut = async () => {
   try {
@@ -313,8 +350,3 @@ export const signOut = async () => {
 }
 
 
-/**  Summary:
-This file provides essential functions for user authentication processes such as signing up, signing in, and signing out using secure practices 
-like password hashing and session management. It integrates with a database using Drizzle-ORM and ensures secure session handling using Lucia and 
-cookies in a Next.js environment.
-*/

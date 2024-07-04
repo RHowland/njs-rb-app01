@@ -1,6 +1,6 @@
 // Component Name : SignInPage
 
-import { SignInForm } from "@/components/SignInForm"
+import { SignInForm } from "@/components/auth/SignInForm"
 import { validateRequest } from "@/lib/lucia"
 import { redirect } from "next/navigation"
 

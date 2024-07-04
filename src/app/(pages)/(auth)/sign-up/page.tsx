@@ -1,6 +1,6 @@
 // Component Name : SignUpPage
 
-import { SignUpForm } from "@/components/SignUpForm"
+import { SignUpForm } from "@/components/auth/SignUpForm"
 import { validateRequest } from "@/lib/lucia"
 import { redirect } from "next/navigation"
 

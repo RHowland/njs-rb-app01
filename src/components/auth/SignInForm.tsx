@@ -15,12 +15,18 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { SignInSchema } from "../zodSchemaTypes"
+import { SignInSchema } from "@/zodSchemaTypes"
 import { toast } from "@/components/ui/use-toast"
 import { signIn } from "@/lib/actions/auth.actions"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useLoading } from "@/hooks/useLoading"
+import Spinner from "@/components/Sppinner"
+
 
 export function SignInForm() {
+  const {state : LoadingState , handleStateChange : handleLoadingState } = useLoading();
+  const router = useRouter()
   const form = useForm<z.infer<typeof SignInSchema>>({
     resolver: zodResolver(SignInSchema),
     defaultValues: {
@@ -31,16 +37,16 @@ export function SignInForm() {
 
   // Section 1 
   async function onSubmit(values: z.infer<typeof SignInSchema>) {
+    handleLoadingState({isLoading : true});
     const res = await signIn(values)
     if (res.success) {
       toast({
         variant: "default",
         description: "Signed in successfully",
       });
+      handleLoadingState({isLoading : false});
       if(typeof window){
-        setTimeout(() => {
-          window.location.reload()
-        },1000);
+        window.location.reload();
       }
       return;
     }
@@ -48,6 +54,7 @@ export function SignInForm() {
       variant: "destructive",
       description: res.error,
     })
+    handleLoadingState({isLoading : false});
   }
   return (
     // Section 2 
@@ -79,7 +86,7 @@ export function SignInForm() {
             </FormItem>
           )}
         />
-        <Button type="submit">Submit</Button>
+        <Button type="submit" disabled={LoadingState.isLoading}>{LoadingState.isLoading ? <Spinner /> : "Submit"}</Button>
       </form>
       {/* Section 3 */}
       <div className="flex gap-2">

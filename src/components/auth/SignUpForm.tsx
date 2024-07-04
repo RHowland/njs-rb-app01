@@ -14,45 +14,86 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { NewPassworSchema } from "../zodSchemaTypes"
+import { SignUpSchema } from "@/zodSchemaTypes"
 import { toast } from "@/components/ui/use-toast"
-import { useRouter, useSearchParams } from "next/navigation"
-import { newPassword } from "@/lib/actions/auth.actions"
+import { useRouter } from "next/navigation"
+import { signUp } from "@/lib/actions/auth.actions"
+import Link from "next/link"
+import { MailType } from "@/types"
+import Spinner from "@/components/Sppinner"
+import { useLoading } from "@/hooks/useLoading"
+import { useEffect } from "react"
 
-export function NewPasswordForm() {
+export function SignUpForm() {
+  const {state : LoadingState , handleStateChange : handleLoadingState } = useLoading();
   const router = useRouter()
 
-  const searchParams = useSearchParams()
-  const token = searchParams.get("token") || "";
-
-  const form = useForm<z.infer<typeof NewPassworSchema>>({
-    resolver: zodResolver(NewPassworSchema),
+  const form = useForm<z.infer<typeof SignUpSchema>>({
+    resolver: zodResolver(SignUpSchema),
     defaultValues: {
+      name: "",
+      email: "",
       password: "",
       confirmPassword: "",
     },
   })
 
   // section 1 
-  async function onSubmit(values: z.infer<typeof NewPassworSchema>) {
-    const res = await newPassword(values , token)
+  async function onSubmit(values: z.infer<typeof SignUpSchema>) {
+    handleLoadingState({isLoading : true})
+    const res = await signUp(values)
     if (res.success) {
       toast({
         variant: "default",
         description: res.message,
       })
-      router.push(`/sign-in`);
+      router.push(`/verify-token?type=${MailType["signUpVerify"]}`);
       return;
     }
     toast({
       variant: "destructive",
       description: res.error,
     })
+    handleLoadingState({isLoading : false});
+    
   }
+  useEffect(() => {
+    return () => {
+      handleLoadingState({isLoading : false});
+    };
+  },[])
+
   return (
     // section 2 
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2">
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input type="email" placeholder="example@example.com" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />{" "}
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Name</FormLabel>
+              <FormControl>
+                <Input  placeholder="Ex: Jhon" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />{" "}
+        
         <FormField
           control={form.control}
           name="password"
@@ -79,12 +120,22 @@ export function NewPasswordForm() {
             </FormItem>
           )}
         />
-        <Button type="submit">Submit</Button>
+        <Button type="submit" disabled={LoadingState.isLoading}>{LoadingState.isLoading ? <Spinner /> : "Submit"}</Button>
       </form>
       {/* section 3  */}
+      <div className="flex gap-2">
+        <p>Already have an account?</p>
+        <Link className="text-blue-700  hover:bg-slate-200 rounded-md" href="/sign-in">Sign-In Now</Link>
+      </div>
+      <div className="flex gap-2">
+        <p>Resend Email Verification</p>
+        <Link className="text-blue-700  hover:bg-slate-200 rounded-md" href="/resend-verification">Resend E-verification</Link>
+      </div>
     </Form>
   )
 }
+
+
 
 /**
  * ---------------------------------------------------------------------

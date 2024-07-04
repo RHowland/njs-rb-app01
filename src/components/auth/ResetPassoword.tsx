@@ -1,4 +1,4 @@
-// Component Name : SignInForm
+// Component Name : ResetPasswordForm
 /* eslint-disable react/no-unescaped-entities */
 "use client"
 
@@ -15,15 +15,21 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { RestPasswordSchema } from "../zodSchemaTypes"
+import { RestPasswordSchema } from "@/zodSchemaTypes"
 import { toast } from "@/components/ui/use-toast"
 import { resetPassword } from "@/lib/actions/auth.actions"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { MailType } from "../types"
+import { MailType } from "@/types"
+import { useLoading } from "@/hooks/useLoading"
+import Spinner from "@/components/Sppinner"
+import { useEffect } from "react"
 
 export function ResetPasswordForm() {
+  // section 1
+  const {state : LoadingState , handleStateChange : handleLoadingState } = useLoading();
 const router = useRouter()
+// section 2 
   const form = useForm<z.infer<typeof RestPasswordSchema>>({
     resolver: zodResolver(RestPasswordSchema),
     defaultValues: {
@@ -31,8 +37,9 @@ const router = useRouter()
     },
   })
 
-  // Section 1 
+  // Section 3
   async function onSubmit(values: z.infer<typeof RestPasswordSchema>) {
+    handleLoadingState({isLoading : true});
     const res = await resetPassword(values)
     if (res.success) {
         toast({
@@ -46,9 +53,16 @@ const router = useRouter()
         variant: "destructive",
         description: res.error,
       })
+      handleLoadingState({isLoading : false});
   }
+  useEffect(() => {
+    return () => {
+      handleLoadingState({isLoading : false});
+    };
+  },[])
+
   return (
-    // Section 2 
+    // Section 4 
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2">
         <FormField
@@ -64,7 +78,7 @@ const router = useRouter()
             </FormItem>
           )}
         />{" "}
-        <Button type="submit">Submit</Button>
+        <Button type="submit" disabled={LoadingState.isLoading}>{LoadingState.isLoading ? <Spinner /> : "Submit"}</Button>
       </form>
       {/* Section 3 */}
       <div className="flex gap-2">
@@ -76,31 +90,33 @@ const router = useRouter()
 }
 
 
+
 /**
  * ---------------------------------------------------------------------
- * File Name      : SignInForm.tsx
- * Component Name : SignInForm
+ * File Name      : ResetPasswordForm.tsx
+ * Component Name : ResetPasswordForm
  * Component Type : Form
- * Date Created   : 2024-06-24
+ * Date Created   : 2024-07-01
  * Dev Initials   : Elias Emon
  * ------------------------------
  * Question: Why was it necessary to create this component?
- * Answer  : This component was necessary to provide a user interface for signing in, handling form validation, and managing authentication state in a user-friendly and efficient manner.
- *
+ * Answer  : This component was necessary to provide users with a way to request a password reset. This functionality is essential for users who have forgotten their password and need to regain access to their account.
  * ------------------------------
  * Question: What does this component do?:
- * Answer  :  This component renders a sign-in form that allows users to input their email and password. It validates the inputs using a schema, handles form submission, attempts to sign the user in, and provides feedback via toast notifications. If the sign-in is successful, it reloads the page; if not, it displays an error message.
- *
+ * Answer  : This component renders a form that allows users to enter their email address to request a password reset link. It validates the input, handles the submission process by calling an API to initiate the password reset, and provides feedback to the user through toast notifications. It also manages loading states to enhance user experience during the form submission.
  * ------------------------------
  * Section Comments:   (Enter "none" if you have no comments)
  * Section 1:
- * Handles form submission, attempts user sign-in, and provides feedback based on the result.
+ * This section sets up the loading state management using a custom hook `useLoading` to handle UI feedback during form submission.
  * 
  * Section 2:
- * Renders the form fields for email and password input, including validation and error messages.
+ * This section initializes the form using `react-hook-form` and Zod schema for validation. It sets default values and attaches the resolver for validation.
  * 
  * Section 3:
- * Provides a link for users to navigate to the sign-up page if they don't have an account.
+ * This section defines the `onSubmit` function to handle form submission. It makes an API call to request a password reset and provides user feedback using toasts. It also handles routing to the verify token page and manages the loading state.
+ * 
+ * Section 4: 
+ * This section renders the form fields and the submit button. It also includes a link for users to navigate to the sign-up page if they don't have an account.
  * 
  * ------------------------------
  * Input Comments:     (Enter "none" if you have no comments)
